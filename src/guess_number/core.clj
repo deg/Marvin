@@ -10,6 +10,10 @@
   [& args]
   (setup-frame))
 
+(defmacro dbg
+  ([x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
+  ([prefix x] `(let [x# ~x] (println ~prefix x#) x#)))
+
 (defn setup-frame
   "Configure our window parts"
   []
@@ -88,24 +92,41 @@
       ;; (repaint! guess-window)
       (text! history-window (str/join " " @guesses)))))
 
-(defn chain-matches [[key history]]
+(defn chain-matches [[key history tag]]
   (let [key-len (count key)
         hist-len (count history)]
     (keep-indexed (fn [idx item] (when (and (= key item)
-                                            (< (+ idx key-len) hist-len))
-                                   (history (+ idx key-len))))
+                                            (<= (+ idx key-len) hist-len))
+                                   {:guess-pos (+ idx key-len)
+                                    :match-start idx
+                                    :match-len key-len
+                                    :tag tag}))
                   (partition key-len 1 history))))
 
 (defn chains [history]
-  (let [len (count history)]
-    (mapcat chain-matches
-         (map #(vector (subvec history %) (subvec history 0 %))
-              (range (+ (/ len 2) 1/2) len)))))
+  (let [len (count history)
+        chain-seq (fn [hist tag]
+                    (map #(vector (subvec hist %) (subvec hist 0 %) tag)
+                         (range (int (/ len 2)) len)))
+        raw-chains (mapcat chain-matches (chain-seq history :raw))
+        first-diffs (mapv - (rest history) history)
+        diff-chains (mapcat chain-matches (chain-seq first-diffs :diff1))]
+    ;; We only need the best, so grab best of each search.
+    {:raw (first raw-chains) :first-diff  (first diff-chains)}))
+
 
 (defn guess-number
   "'AI' logic."
   [history]
-  (or (first (chains history)) (rand-int 10)))
+  (let [{:keys [raw first-diff]} (chains history)]
+    (cond
+     (and raw (>= (:match-len raw) 2))    (history (:guess-pos raw))
+     (and first-diff
+          (>= (:match-len first-diff) 1)) (let [hot-pos (:guess-pos first-diff)
+                                                diff (- (history (inc hot-pos)) (history hot-pos))]
+                                            (+ diff (last history)))
+     (and raw (>= (:match-len raw) 1))    (history (:guess-pos raw))
+     :else (rand-int 10))))
   
 
 ;;; TODO
