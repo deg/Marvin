@@ -123,8 +123,9 @@
      (and raw (>= (:match-len raw) 2))    (history (:guess-pos raw))
      (and first-diff
           (>= (:match-len first-diff) 1)) (let [hot-pos (:guess-pos first-diff)
-                                                diff (- (history (inc hot-pos)) (history hot-pos))]
-                                            (+ diff (last history)))
+                                                diff (- (history (inc hot-pos)) (history hot-pos))
+                                                raw-guess (+ diff (last history))]
+                                            (if (< raw-guess 10) raw-guess (- raw-guess 10)))
      (and raw (>= (:match-len raw) 1))    (history (:guess-pos raw))
      :else (rand-int 10))))
   
