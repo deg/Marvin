@@ -139,13 +139,3 @@
 ;;; For layouts and skinning, see
 ;;; https://github.com/daveray/seesaw/blob/develop/examples/substance/src/substance/core.clj
 ;;; or local copy in /git/mirror
-
-
-
-
-
-
-
-
-
-
