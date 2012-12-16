@@ -39,46 +39,64 @@
 ;;; ****************************************************************************
 
 (ns guess-number.seesaw-frame
-  (:use seesaw.core seesaw.dev))
+  (:use [seesaw.core]
+        [seesaw.dev]
+        [seesaw.style :only [apply-stylesheet]])
+  (:require [clojure.string :as str]
+            [seesaw.bind :as bind]
+            [guess-number.guess :as guess]))
+
+(defn layout []
+  (frame
+   :title "Mind-reading number guesser"
+   :content
+   (border-panel
+    :border 4 :hgap 4 :vgap 4
+    :north (text :id :subtitle)
+    :center (text :id :history
+                  :multi-line? true)
+    :east (grid-panel
+            :columns 3
+            :items (concat (map #(button :class :digit :text %)
+                                [7 8 9
+                                 4 5 6
+                                 1 2 3
+                                 0])
+                           [(button :id :reset)]))
+    :south (text :id :patter))))
+
+
+(def style
+   (let [font-name "Verdana"
+         output-font {:name font-name :size 14 :style :bold}
+         button-font {:name font-name :size 24 :style :italic}]
+     {[:#subtitle] {:halign    :center
+                    :font      {:name font-name :size 18 :style :bold}
+                    :editable? false
+                    :text "Written by David Goldfarb to amaze his kids"}
+      [:#history] {:font output-font
+                   :border "History"
+                   :editable? false
+                   :wrap-lines? true
+                   :preferred-size [600 :by 200]
+                   :text ""}
+      [:.digit]   {:font button-font}
+      [:#reset]   {:font {assoc button-font :size 14}
+                   :text "reset"}
+      [:#patter]  {:font output-font
+                   :editable? false
+                   :text "Choose a number"}}))
+
+
 
 (defn setup-frame
   "Configure our window parts"
   [turn-callback]
   (let [guesses (atom [])
         num-successes (atom 0)
-        num-failures (atom 0)
-        button-font "VERDANA-ITALIC-24"
-        label-font "VERDANA-BOLD-18"
-        output-font "VERDANA-BOLD-14"
-        history-window (text :border "History"
-                             :editable? false
-                             :multi-line? true
-                             :wrap-lines? true
-                             :font output-font
-                             :preferred-size [600 :by 200]
-                             :text "")
-        guess-window (text :border "Computer guess"
-                           :editable? false
-                           :font output-font
-                           :text "Choose a number")
-        buttons (map (fn [n] (button :font button-font
-                                     :text (str n)
-                                     :user-data n))
-                     (range 10))
-        frame (frame
-               :title "Mind-reading number guesser"
-               :resizable? false
-               :content (vertical-panel
-                         :items [(text :editable? false
-                                       :halign :center
-                                       :font label-font
-                                       :text "Written by David Goldfarb to amaze his kids")
-                                 history-window
-                                 guess-window
-                                 (horizontal-panel :items buttons)]))]
-    (native!)
-    (-> frame pack! show! invoke-later)
-    (map (fn [button]
+        num-failures (atom 0) ]
+    (-> (layout) (apply-stylesheet style) pack! show! invoke-later)
+    #_(map (fn [button]
            (listen button :mouse-clicked
                    (fn [_]
                      (turn-callback (user-data button)
@@ -86,3 +104,63 @@
                               history-window guess-window)
                      (-> frame pack!))))
          buttons)))
+
+(defn behave
+  [root]
+  (let [numbers (atom [])
+        num-successes (atom 0)
+        num-failures (atom 0)
+        history-pane (select root [:#history])
+        patter-pane (select root [:#patter])
+        ]
+    (listen (select root [:.digit])
+            :action (fn [e]
+                     (let [guess (guess/guess-number @numbers)
+                           new-digit (text e)
+                           new-number (Integer/valueOf new-digit)
+                           success (= guess new-number)]
+                       (swap! (if success num-successes num-failures) inc)
+                       (swap! numbers conj new-number)
+                       (let [success-ratio
+                             (float (/ @num-successes (+ @num-successes @num-failures)))
+                             message (str "I guessed " guess " "
+                                          (if success
+                                            "and I was right!"
+                                            (str "but you chose " new-number "."))
+                                          " Guessed " success-ratio
+                                          (if (> success-ratio 0.10)
+                                            " [TRY HARDER]"
+                                            " [DOING GOOD]")
+                                          )]
+                         (text! patter-pane message)
+                         (text! history-pane (str/join " " @numbers))))))
+    (listen (select root [:#reset])
+            :action (fn [e]
+                      (text! patter-pane "RESET")))
+    root))
+
+
+(defn do-turn
+  "Do a turn."
+  [new-number guesses num-successes num-failures history-window guess-window]
+  (let []
+    (let [])))
+
+
+(defn- run-layout
+  [& {:keys [on-close] :or {on-close :dispose}}]
+  (->
+   (layout)
+   behave
+   (apply-stylesheet style)
+   invoke-now
+   (config! :on-close on-close)
+   pack!
+   show!)
+  nil)
+
+(defn run []
+  (run-layout))
+
+(defn run-and-exit []
+  (run-layout :on-close :exit))
