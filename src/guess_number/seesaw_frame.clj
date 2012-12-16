@@ -63,8 +63,7 @@
                            :text "Choose a number")
         buttons (map (fn [n] (button :font button-font
                                      :text (str n)
-                                     :user-data n
-                                     :listen [:mouse-clicked #(alert "Hi")]))
+                                     :user-data n))
                      (range 10))
         frame (frame
                :title "Mind-reading number guesser"
