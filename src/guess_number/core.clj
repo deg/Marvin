@@ -92,7 +92,7 @@
       ;; (repaint! guess-window)
       (text! history-window (str/join " " @guesses)))))
 
-(defn chain-matches [[key history tag]]
+(defn chain-matches [[history key tag]]
   (let [key-len (count key)
         hist-len (count history)]
     (keep-indexed (fn [idx item] (when (and (= key item)
@@ -106,12 +106,14 @@
 (defn chains [history]
   (let [len (count history)
         chain-seq (fn [hist tag]
-                    (map #(vector (subvec hist %) (subvec hist 0 %) tag)
+                    (map #(conj (split-at % hist) tag)
                          (range (int (/ len 2)) len)))
         raw-chains (mapcat chain-matches (chain-seq history :raw))
         first-diffs (mapv - (rest history) history)
         diff-chains (mapcat chain-matches (chain-seq first-diffs :diff1))]
     ;; We only need the best, so grab best of each search.
+    (dbg raw-chains)
+    (dbg diff-chains)
     {:raw (first raw-chains) :first-diff  (first diff-chains)}))
 
 
