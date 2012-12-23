@@ -39,34 +39,37 @@
 ;;; ****************************************************************************
 
 (ns guess-number.seesaw-frame
-  (:use [seesaw.core]
-        [seesaw.dev]
+  (:use seesaw.core
+        seesaw.color
+        seesaw.dev
+        seesaw.graphics
         [seesaw.style :only [apply-stylesheet]])
   (:require [clojure.string :as str]
             [seesaw.bind :as bind]
             [guess-number.guess :as guess]))
 
-(defn layout []
+(defn guesser-layout []
   (frame
    :title "Mind-reading number guesser"
    :content
    (border-panel
     :border 4 :hgap 4 :vgap 4
     :north (text :id :subtitle)
+    :west (canvas :id :status)
     :center (text :id :history
                   :multi-line? true)
     :east (grid-panel
             :columns 3
             :items (concat (map #(button :class :digit :text %)
-                                [7 8 9
+                                [1 2 3
                                  4 5 6
-                                 1 2 3
+                                 7 8 9
                                  0])
                            [(button :id :reset)]))
     :south (text :id :patter))))
 
 
-(def style
+(def guesser-style
    (let [font-name "Verdana"
          output-font {:name font-name :size 14 :style :bold}
          button-font {:name font-name :size 24 :style :italic}]
@@ -74,6 +77,7 @@
                     :font      {:name font-name :size 18 :style :bold}
                     :editable? false
                     :text "Written by David Goldfarb to amaze his kids"}
+      [:#status] {:preferred-size [200 :by 200]}
       [:#history] {:font output-font
                    :border "History"
                    :editable? false
@@ -87,29 +91,30 @@
                    :editable? false
                    :text "Choose a number"}}))
 
-
-
-(defn setup-frame
-  "Configure our window parts"
-  [turn-callback]
-  (let [guesses (atom [])
-        num-successes (atom 0)
-        num-failures (atom 0) ]
-    (-> (layout) (apply-stylesheet style) pack! show! invoke-later)
-    #_(map (fn [button]
-           (listen button :mouse-clicked
-                   (fn [_]
-                     (turn-callback (user-data button)
-                              guesses num-successes num-failures
-                              history-window guess-window)
-                     (-> frame pack!))))
-         buttons)))
+(defn paint-guesser-status [c g count]
+  (let [w (.getWidth c)
+        h (.getHeight c)
+        color-start [0x80 0x80 0x80]
+        color-end [0xFF 0xD7 0x00]
+        blend (fn [start end pct] (int (+ (* start (- 1.0 pct)) (* end pct))))
+        victory 25.0
+        achieved (/ count victory)
+        achievement-color (apply color (map blend color-start color-end (repeat achieved)))
+        width (* w achieved)
+        height (* h achieved)
+        left (blend (/ w 2) 0 achieved)
+        top (blend (/ h 2) 0 achieved)]
+    (draw g
+          (rounded-rect left top width height)
+          (style :background achievement-color))))
 
 (defn behave
   [root]
   (let [numbers (atom [])
         num-successes (atom 0)
+        num-consecutive-failures (atom 0)
         num-failures (atom 0)
+        status-pane (select root [:#status])
         history-pane (select root [:#history])
         patter-pane (select root [:#patter])
         ]
@@ -120,6 +125,9 @@
                            new-number (Integer/valueOf new-digit)
                            success (= guess new-number)]
                        (swap! (if success num-successes num-failures) inc)
+                       (if success
+                         (reset! num-consecutive-failures 0)
+                         (swap! num-consecutive-failures inc))
                        (swap! numbers conj new-number)
                        (let [success-ratio
                              (float (/ @num-successes (+ @num-successes @num-failures)))
@@ -131,7 +139,9 @@
                                           (if (> success-ratio 0.10)
                                             " [TRY HARDER]"
                                             " [DOING GOOD]")
+                                          ".  " @num-consecutive-failures " in a row."
                                           )]
+                         (config! status-pane :paint (fn [c g] (paint-guesser-status c g @num-consecutive-failures)))
                          (text! patter-pane message)
                          (text! history-pane (str/join " " @numbers))))))
     (listen (select root [:#reset])
@@ -140,19 +150,12 @@
     root))
 
 
-(defn do-turn
-  "Do a turn."
-  [new-number guesses num-successes num-failures history-window guess-window]
-  (let []
-    (let [])))
-
-
 (defn- run-layout
   [& {:keys [on-close] :or {on-close :dispose}}]
   (->
-   (layout)
+   (guesser-layout)
    behave
-   (apply-stylesheet style)
+   (apply-stylesheet guesser-style)
    invoke-now
    (config! :on-close on-close)
    pack!

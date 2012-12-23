@@ -41,54 +41,16 @@
 (ns guess-number.core
   (:gen-class)
   (:use seesaw.core)
-  (:require [guess-number.guess :as guess]
-            [guess-number.seesaw-frame :as win]
-            [clojure.string :as str]))
+  (:require [guess-number.seesaw-frame :as win]))
 
-(declare do-turn)
 
 (defn -main
   "I don't do a whole lot ... yet."
   [& args]
-  (win/setup-frame do-turn))
+  (win/run-and-exit))
 
-(defn do-turn
-  "Do a turn."
-  [new-number guesses num-successes num-failures history-window guess-window]
-  (let [guess (guess/guess-number @guesses)
-        success (= guess new-number)]
-    (swap! guesses conj new-number)
-    (swap! (if success num-successes num-failures) inc)
-    (let [success-ratio (float (/ @num-successes (+ @num-successes @num-failures)))
-          message (str "I guessed " guess " "
-                       (if success
-                         "and I was right!"
-                         (str "but you chose " new-number "."))
-                       " Guessed " success-ratio
-                       (if (> success-ratio 0.10)
-                         " [TRY HARDER]"
-                         " [DOING GOOD]")
-                       )]
-      (text! guess-window message)
-      ;; DOESN'T WORK
-      ;; (.setBackground guess-window
-      ;;                 (java.awt.Color.
-      ;;                  (cond (< success-ratio 0.01) 0x00FF00
-      ;;                        (< success-ratio 0.03) 0x008000
-      ;;                        (< success-ratio 0.06) 0x208020
-      ;;                        (< success-ratio 0.09) 0x202020
-      ;;                        (< success-ratio 0.11) 0x802020
-      ;;                        (< success-ratio 0.15) 0x800000
-      ;;                        (< success-ratio 0.20) 0xFF0000)))
-      ;; (repaint! guess-window)
-      (text! history-window (str/join " " @guesses)))))
-
-
-
-
-
-
-  
+(defn run []
+  (win/run))
 
 ;;; TODO
 ;;;
