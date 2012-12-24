@@ -124,21 +124,22 @@
                            new-digit (text e)
                            new-number (Integer/valueOf new-digit)
                            success (= guess new-number)]
+                       (swap! numbers conj new-number)
                        (swap! (if success num-successes num-failures) inc)
                        (if success
                          (reset! num-consecutive-failures 0)
                          (swap! num-consecutive-failures inc))
-                       (swap! numbers conj new-number)
-                       (let [success-ratio
-                             (float (/ @num-successes (+ @num-successes @num-failures)))
+                       (let [num-trials (+ @num-successes @num-failures)
+                             success-ratio (float (/ @num-successes num-trials))
                              message (str "I guessed " guess " "
                                           (if success
                                             "and I was right!"
                                             (str "but you chose " new-number "."))
                                           " Guessed " success-ratio
-                                          (if (> success-ratio 0.10)
-                                            " [TRY HARDER]"
-                                            " [DOING GOOD]")
+                                          " (" @num-successes " of " num-trials ")"
+                                          ;; (if (> success-ratio 0.10)
+                                          ;;   " [TRY HARDER]"
+                                          ;;   " [DOING GOOD]")
                                           ".  " @num-consecutive-failures " in a row."
                                           )]
                          (config! status-pane :paint (fn [c g] (paint-guesser-status c g @num-consecutive-failures)))
@@ -146,6 +147,11 @@
                          (text! history-pane (str/join " " @numbers))))))
     (listen (select root [:#reset])
             :action (fn [e]
+                      (reset! numbers [])
+                      (reset! num-successes 0)
+                      (reset! num-consecutive-failures 0)
+                      (reset! num-failures 0)
+                      (text! history-pane "")
                       (text! patter-pane "RESET")))
     root))
 
