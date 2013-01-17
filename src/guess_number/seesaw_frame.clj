@@ -96,6 +96,7 @@
         h (.getHeight c)
         color-start [0x80 0x80 0x80]
         color-end [0xFF 0xD7 0x00]
+        ;; [TODO] crashes with color-out-of-bounds after victory
         blend (fn [start end pct] (int (+ (* start (- 1.0 pct)) (* end pct))))
         victory 25.0
         achieved (/ count victory)
